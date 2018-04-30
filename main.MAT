@@ -1,0 +1,69 @@
+
+% cleanFileDir : director containing files to be merged with noise signal
+% targetDirStr : target file directory to store merged files in
+% NoiseSignal : noise audio to be merged in
+% NoiseFs : sample rate of noise files
+% SNR : desired signal to noise ratio of samples
+function [ ] = genNoisyFiles( cleanFileDir, targetDirStr, NoiseSignal, NoiseFs, SNR )
+
+    for file = 1:length(cleanFileDir')
+        fileName = sprintf('clean_audio/%s', cleanFileDir(file).name);
+        [data,fs] = audioread(fileName);
+        
+        mergedAudio = addNoise(data, fs, NoiseSignal, NoiseFs, SNR);
+        SNdata = mergedAudio;
+        SNfs = fs;
+        
+        newFileName = sprintf( '%s/%s.wav', targetDirStr, cleanFileDir(file).name(1:end-4));
+          
+       audiowrite(newFileName,SNdata,SNfs);
+    end
+end
+
+function [ noisyAudio ] = addNoise( speech, speechFs, noise, noiseFs, SNR )
+
+    %resample noise signal to speech signal
+    [P,Q] = rat(speechFs/noiseFs);
+    resampledNoise = resample(noise,P,Q);
+
+    %% Speech and Noise Power Calculation
+    multipliedSpeech = (speech.^2);
+    speechPower = sum(multipliedSpeech)/length(speech);
+
+    multipliedNoise = (resampledNoise.^2);
+    noisePower = sum(multipliedNoise)/length(resampledNoise);
+    
+    %% SNR scaler Calculation 
+    snrComponant = 10^(-(SNR/10));
+    
+    scaler = sqrt((speechPower/noisePower)*snrComponant);
+    scaledNoise = zeros(1,length(resampledNoise));
+    
+    
+    %% Create a vector of scaled noise
+    for i = 1:length(resampledNoise)
+        scaledNoise(i) = resamplednoise(i) * scaler;
+    end
+    
+    %% Cut the noise to fit the speech length (does not cover if speech is longer as noise files are all longer)
+    SLength = length(speech);
+    NLength = length(scaledNoise);
+    
+    if SLength < NLength %if noise longer than the speech
+        scaledNoise = scaledNoise(1:SLength);
+    end
+    
+    noisyAudio = speech + scaledNoise';
+    
+      %% Debug code
+%     figure(1);
+%     plot(speech);
+%     
+%     figure(2);
+%     plot(noisyAudio');
+%     pause();
+
+end
+
+
+
